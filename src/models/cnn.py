@@ -6,7 +6,9 @@ from keras.layers import (
     MaxPooling2D,
     Dropout
 )
+from keras.callbacks import EarlyStopping, LearningRateScheduler, ReduceLROnPlateau
 
+from models.utils import step_decay
 from models.abstract.model import Model
 
 _IMG_SIZE = 200
@@ -44,4 +46,8 @@ class CNN(Model):
         return model
 
     def get_model_callbacks(self) -> list:
-        return []
+        learning_rate_scheduler = LearningRateScheduler(step_decay)
+        reduce_learning_rate_on_plateu = ReduceLROnPlateau(monitor="val_loss", patience=1)
+        early_stopping = EarlyStopping(monitor="val_loss", patience=2)
+
+        return [learning_rate_scheduler, reduce_learning_rate_on_plateu, early_stopping]

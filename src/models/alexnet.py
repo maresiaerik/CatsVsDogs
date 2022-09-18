@@ -4,7 +4,6 @@ from keras.layers import (
     Flatten,
     Conv2D,
     MaxPooling2D,
-    RandomFlip
 )
 from keras.callbacks import EarlyStopping, LearningRateScheduler, ReduceLROnPlateau
 
