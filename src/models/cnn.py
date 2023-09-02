@@ -17,29 +17,27 @@ _EPOCHS = 20
 
 class CNN(Model):
     def __init__(self):
-        super().__init__(_IMG_SIZE, _EPOCHS)
+        super().__init__("CNN", _IMG_SIZE, _EPOCHS)
 
     def create_model(self) -> Sequential:
-        model = Sequential([
-            Model.data_augmentation(),
-            Conv2D(16, (5, 5), activation="relu", padding="same", input_shape=(self.img_size, self.img_size, 3)),
-            MaxPooling2D((3, 3)),
-            Conv2D(32, (5, 5), activation="relu", padding="same"),
-            MaxPooling2D((3, 3)),
-            Conv2D(32, (5, 5), activation="relu", padding="same"),
-            MaxPooling2D((3, 3)),
-            Dropout(0.25),
-            Conv2D(64, (3, 3), activation="relu", padding="same"),
-            MaxPooling2D((2, 2)),
-            Conv2D(128, (3, 3), activation="relu", padding="same"),
-            MaxPooling2D((2, 2)),
-            Dropout(0.25),
-            Flatten(),
-            Dense(128, activation="relu"),
-            Dense(128, activation="relu"),
-            Dense(64, activation="relu"),
-            Dense(1, activation="sigmoid")
-        ])
+        model = Sequential()
+        model.add(Conv2D(16, (5, 5), activation="relu", padding="same", input_shape=(self.img_size, self.img_size, 3)))
+        model.add(MaxPooling2D((3, 3)))
+        model.add(Conv2D(32, (5, 5), activation="relu", padding="same"))
+        model.add(MaxPooling2D((3, 3)))
+        model.add(Conv2D(32, (5, 5), activation="relu", padding="same"))
+        model.add(MaxPooling2D((3, 3)))
+        model.add(Dropout(0.25))
+        model.add(Conv2D(64, (3, 3), activation="relu", padding="same"))
+        model.add(MaxPooling2D((2, 2)))
+        model.add(Conv2D(128, (3, 3), activation="relu", padding="same"))
+        model.add(MaxPooling2D((2, 2)))
+        model.add(Dropout(0.25))
+        model.add(Flatten())
+        model.add(Dense(128, activation="relu"))
+        model.add(Dense(128, activation="relu"))
+        model.add(Dense(64, activation="relu"))
+        model.add(Dense(1, activation="sigmoid"))
 
         model.compile(loss="binary_crossentropy", optimizer="sgd", metrics=["accuracy"])
 
