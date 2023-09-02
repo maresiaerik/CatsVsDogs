@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Any, TypeVar
+from typing import Tuple, TypeVar, Union
 import pandas as pd
 import numpy as np
 from keras.models import Sequential
-from keras.layers import RandomFlip
+from keras.layers import RandomFlip, RandomRotation, RandomContrast
 from keras.preprocessing.image import ImageDataGenerator, DataFrameIterator
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
@@ -11,18 +11,24 @@ ModelHistory = TypeVar("ModelHistory", list, dict)
 
 _DEFAULT_IMG_SIZE = 250
 _DEFAULT_EPOCHS = 20
+_DEFAULT_BATCH_SIZE = 32
 _SIGMOID_BINARY_CLASS_THRESHOLD = 0.5
+_SAVED_MODELS_DIRECTORY_PATH = "../saved_models"
 
 
 class Model(ABC):
     def __init__(
             self,
+            name: str,
             img_size: int = _DEFAULT_IMG_SIZE,
-            epochs: int = _DEFAULT_EPOCHS
+            epochs: int = _DEFAULT_EPOCHS,
+            batch_size: int = _DEFAULT_BATCH_SIZE
     ):
-        self.model = None
+        self.name = name
+        self.model: Union[Sequential, None] = None
         self.img_size = img_size
         self.epochs = epochs
+        self.batch_size = batch_size
 
     @abstractmethod
     def create_model(self) -> Sequential:
@@ -38,16 +44,24 @@ class Model(ABC):
 
         history = self._train(train_data, test_data)
 
+        self.model.summary()
+
         return history
 
-    def cross_validate(self, files_df: pd.DataFrame, k: int = 5) -> Tuple[list, list]:
+    def cross_validate(
+            self,
+            files_df: pd.DataFrame,
+            k: int = 5,
+            save_model_dir: str = _SAVED_MODELS_DIRECTORY_PATH
+    ) -> Tuple[list, list]:
         kf = StratifiedKFold(n_splits=k, shuffle=True)
 
         histories = []
         losses = []
-        fold = 0
+        fold = 1
+
         for train_idx, test_idx in kf.split(files_df["file"], files_df["label"]):
-            print(f"Fold #{++fold + 1}")
+            print(f"Fold #{fold}")
 
             np.random.shuffle(train_idx)
             np.random.shuffle(test_idx)
@@ -62,6 +76,11 @@ class Model(ABC):
 
             zero_one_loss = self.test_model(test_data)
             losses.append(np.mean(zero_one_loss))
+
+            save_path = save_model_dir + f"/cross_validated_models/{self.name}_FOLD#{fold}"
+            self.model.save(save_path)
+
+            fold += 1
 
         return histories, losses
 
@@ -85,6 +104,7 @@ class Model(ABC):
             train_data,
             validation_data=test_data,
             epochs=self.epochs,
+            batch_size=self.batch_size,
             callbacks=self.get_model_callbacks()
         )
 
@@ -102,24 +122,30 @@ class Model(ABC):
             train_data: pd.DataFrame,
             test_data: pd.DataFrame
     ) -> Tuple[DataFrameIterator, DataFrameIterator]:
-        train_data_generator = ImageDataGenerator(rescale=1. / 255)
+        train_data_generator = ImageDataGenerator(
+            rescale=1. / 255,
+            horizontal_flip=True,
+        )
         test_data_generator = ImageDataGenerator(rescale=1. / 255)
 
-        train_data = train_data_generator.flow_from_dataframe(train_data, x_col="file", y_col="label", color_mode="rgb",
-                                                              target_size=(self.img_size, self.img_size),
-                                                              class_mode="binary",
-                                                              shuffle=True)
-        test_data = test_data_generator.flow_from_dataframe(test_data, x_col="file", y_col="label", color_mode="rgb",
-                                                            target_size=(self.img_size, self.img_size),
-                                                            class_mode="binary")
-
-        return train_data, test_data
-
-    @staticmethod
-    def data_augmentation() -> Sequential:
-        return Sequential(
-            [
-                RandomFlip("horizontal"),
-            ]
+        train_data = train_data_generator.flow_from_dataframe(
+            train_data,
+            x_col="file",
+            y_col="label",
+            color_mode="rgb",
+            target_size=(self.img_size, self.img_size),
+            class_mode="binary",
+            shuffle=True,
+            batch_size=self.batch_size
+        )
+        test_data = test_data_generator.flow_from_dataframe(
+            test_data,
+            x_col="file",
+            y_col="label",
+            color_mode="rgb",
+            target_size=(self.img_size, self.img_size),
+            class_mode="binary",
+            batch_size=self.batch_size
         )
 
+        return train_data, test_data

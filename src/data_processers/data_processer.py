@@ -3,6 +3,7 @@ from pathlib import Path
 from PIL import Image
 import imghdr
 import pandas as pd
+from sklearn.utils import shuffle
 
 
 def process_data_and_retrieve_files_df() -> pd.DataFrame:
@@ -11,12 +12,13 @@ def process_data_and_retrieve_files_df() -> pd.DataFrame:
     if Path(f"./{files_df_file_name}").is_file():
         files_df = pd.read_csv(f"./{files_df_file_name}", sep=",")
         files_df.label = files_df.label.astype(str)
+
         return files_df
 
     processed_file_paths = _remove_incorrect_files_and_return_valid_file_list()
 
     files_df = pd.DataFrame(processed_file_paths, columns=["file", "label"])
-    files_df.sample(frac=1).reset_index(drop=True, inplace=True)
+    files_df = shuffle(files_df)
 
     files_df.to_csv(f"./{files_df_file_name}", sep=",")
 
